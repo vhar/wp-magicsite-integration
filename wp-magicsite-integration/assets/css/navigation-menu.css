@@ -1,0 +1,11 @@
+.magicsite-navigation-menu-wrapper .magicsite-navigation-menu li.menu-item-has-children ul {
+	display: none;
+}
+
+.magicsite-navigation-menu-wrapper .magicsite-navigation-menu li.menu-item-has-children.magicsite-navigation-menu-opened  > ul {
+	display: block;
+}
+
+.magicsite-navigation-menu li, .magicsite-navigation-submenu li {
+	list-style: none;
+}

@@ -2,7 +2,7 @@ WP MagicSite Integration Plugin
 ===============================
 
 # Описание
-Плагин для интеграции обязательных разделов сата образовательной организации из ИС MagicSite (https://edusite.ru/) на сайт под управлением CMS Wordpress.
+Плагин для интеграции обязательных разделов сайта образовательной организации из ИС MagicSite (https://edusite.ru/) на сайт под управлением CMS Wordpress.
 
 # Установка
  1. Скачайте ZIP архив плагина https://github.com/e-publish/wp-magicsite-integration/raw/master/wp-magicsite-integration.zip  

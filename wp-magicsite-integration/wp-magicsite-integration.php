@@ -4,7 +4,7 @@
  * Plugin URI: https://github.com/e-publish/wp-magicsite-integration
  * Text domain: wp-magicsite-intergation
  * Description: Плагин интеграции сведений об образовательной организации из среды MagicSite АО "Е-Паблиш"
- * Version: 1.0.1
+ * Version: 1.1.1
  * License: MIT
  * Requires at least: 4.0
  * Requires PHP: 7.2
@@ -207,6 +207,63 @@ class MagicSiteIntegration
 		$response['response_code'] = intval(curl_getinfo( $curlInit, CURLINFO_HTTP_CODE ) );
 		curl_close( $curlInit );
 		return $response;
+	}
+
+	private function magicsite_post_content ( $magicsite_url, $post_type, $post_name ) {
+		$magicsite_content = '';
+		$response = $this->get_magicsite_page( $magicsite_url . $post_type . '/' . $post_name . '.html' );
+		if ( $response['response_code'] == 200 ) {
+			$dom = new DOMDocument();
+			$dom->preserveWhiteSpace = false;
+			libxml_use_internal_errors( true );
+			$dom->loadHTML( $response['response'] );
+			$xpath = new DOMXPath( $dom );
+			$ls_ads = $xpath->query( '//a' );
+			foreach ( $ls_ads as $ad ) {
+				if ( $ad->hasAttribute( 'href' ) ) {
+					$ad_url = $ad->getAttribute( 'href' );
+					$f = parse_url( $ad_url );
+					if ( ! isset( $f['scheme'] ) && ! isset( $f['host'] ) && isset( $f['path'] ) ) {
+						$ad->setAttribute( 'href', $magicsite_url . $f['path'] );
+					}
+				}
+			}
+			$images = $dom->getElementsByTagName( 'img' );
+			foreach ( $images as $image ) {
+				$src = $image->getAttribute( 'src' );
+				$f = parse_url( $src );
+				if ( ! isset( $f['scheme'] ) && ! isset( $f['host'] ) && isset( $f['path'] ) ) {
+					$image->setAttribute( 'src', $magicsite_url . $f['path'] );
+				}
+			}
+			$sections = $xpath->query( "//*[contains(@class, 'inner-page-block')]" );
+			foreach ( $sections as $section ) {
+				$magicsite_content .= $dom->saveHTML( $section );
+			}
+			libxml_clear_errors();
+			$magicsite_content = str_replace( "\n", "", $magicsite_content );
+			$magicsite_content .= '<div></div>';
+			$sections = $xpath->query( "//span[contains(@id, 'site-modified-gmt')]" );
+
+			$post = get_page_by_path( $post_name, OBJECT, $post_type );
+
+			foreach ( $sections as $section ) {
+				$modified = $section->nodeValue;
+
+				if ($modified > $post->post_modified_gmt) {
+					$new_post = array(
+						'ID'           => $post->ID,
+						'post_content' => $magicsite_content,
+					);
+					
+					wp_update_post( $new_post );
+				}
+			}
+		} else {
+			$magicsite_content = '<div>' . 'Неудалось получить данные. Удаленный сервер вернул код' . ' ' . $response['response_code'] ?? '0' . '</div>';
+		}
+
+		return $magicsite_content;
 	}
 
 	private function get_magicsite_url( $uri ) {
@@ -721,6 +778,20 @@ class MagicSiteIntegration
 	public function magicsite_intergration_settings_validate( $input ) {
 		if ( isset( $input['magicsite_url'] ) && $magicsite_url = $this->get_magicsite_url( $input['magicsite_url'] ) ) {
 			$input['magicsite_url'] = $magicsite_url;
+
+			$post_types = self::get_magicsite_pages();
+			foreach ( $post_types as $type => $items ) {
+				foreach ( $items as $item ) {
+					$content = $this->magicsite_post_content( $magicsite_url, $type, $item );
+					$post = get_page_by_path( $item, OBJECT, $type );
+					$new_post = array(
+						'ID'           => $post->ID,
+						'post_content' => $content,
+					);
+
+					wp_update_post( $new_post );
+				}
+			}
 		} else {
 			$input['magicsite_url'] = '';
 			add_settings_error( 'magicsite_url', 'magicsite-url', 'Неверное значение поля "URL сайта в среде MagicSite"' );
@@ -798,49 +869,16 @@ class MagicSiteIntegration
 			if ( isset( $options['magicsite_url'] ) && $magicsite_url = $this->get_magicsite_url( $options['magicsite_url'] ) ) {
 				$post = get_post();
 
-				$magicsite_content = '';
 				$magicpages = $this->get_magicsite_pages();
 				if ( ! in_array( $post->post_name, $magicpages[ $post->post_type ] ) ) {
 					$post->post_type = 'sveden';
 					$post->post_name = 'common';
 				}
-				$response = $this->get_magicsite_page( $options['magicsite_url'] . $post->post_type . '/' . $post->post_name . '.html' );
-				if ( $response['response_code'] == 200 ) {
-					$dom = new DOMDocument();
-					$dom->preserveWhiteSpace = false;
-					libxml_use_internal_errors( true );
-					$dom->loadHTML( $response['response'] );
-					$xpath = new DOMXPath( $dom );
-					$ls_ads = $xpath->query( '//a' );
-					foreach ( $ls_ads as $ad ) {
-						if ( $ad->hasAttribute( 'href' ) ) {
-							$ad_url = $ad->getAttribute( 'href' );
-							$f = parse_url( $ad_url );
-							if ( ! isset( $f['scheme'] ) && ! isset( $f['host'] ) && isset( $f['path'] ) ) {
-								$ad->setAttribute( 'href', $options['magicsite_url'] . $f['path'] );
-							}
-						}
-					}
-					$images = $dom->getElementsByTagName( 'img' );
-					foreach ( $images as $image ) {
-						$src = $image->getAttribute( 'src' );
-						$f = parse_url( $src );
-						if ( ! isset( $f['scheme'] ) && ! isset( $f['host'] ) && isset( $f['path'] ) ) {
-							$image->setAttribute( 'src', $options['magicsite_url'] . $f['path'] );
-						}
-					}
-					$sections = $xpath->query( "//*[contains(@class, 'inner-page-block')]" );
-					foreach ( $sections as $section ) {
-						$magicsite_content .= $dom->saveHTML( $section );
-					}
-					libxml_clear_errors();
-					$magicsite_content = str_replace( "\n", "", $magicsite_content );
-				} else {
-					$magicsite_content = '<div>' . 'Неудалось получить данные. Удаленный сервер вернул код' . ' ' . $response['response_code'] ?? '0' . '</div>';
-				}
+
+				$magicsite_content = $this->magicsite_post_content ( $magicsite_url, $post->post_type, $post->post_name );
 			} else {
 				$magicsite_content = '<div>' . 'Ошибка настройки плагина интеграции с MagicSite' . '</div>';
-			}
+			}	
 		}
 		return $magicsite_content ?? $content;
 	}

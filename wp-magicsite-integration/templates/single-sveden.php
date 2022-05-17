@@ -6,7 +6,7 @@
 			while ( have_posts() ) {
 				the_post();
 				?>
-				<div <?php echo post_class(); ?>>
+				<article <?php echo post_class(); ?>>
 					<header class="entry-header">
 						<h1 class="entry-title"><?php echo the_title(); ?></h1>
 					</header>
@@ -20,7 +20,6 @@
 			echo '<div class="form-message">Плагин интеграции с MagicSite установлен неверно.</div>';
 		}
 		?>
-	</div>
 	<?php
 	} else {
 		echo '<div class="form-message">Плагин интеграции с MagicSite не настроен.', 'wp-magicsite-intergation</div>';

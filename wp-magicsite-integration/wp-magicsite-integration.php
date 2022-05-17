@@ -4,7 +4,7 @@
  * Plugin URI: https://github.com/e-publish/wp-magicsite-integration
  * Text domain: wp-magicsite-intergation
  * Description: Плагин интеграции сведений об образовательной организации из среды MagicSite АО "Е-Паблиш"
- * Version: 1.1.1
+ * Version: 1.1.2
  * License: MIT
  * Requires at least: 4.0
  * Requires PHP: 7.2
